@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HACK MALENDAU 2026 — Sensor Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:       #0a0c10;
+    --surface:  #111418;
+    --border:   #1e2530;
+    --green:    #00ff88;
+    --yellow:   #ffcc00;
+    --red:      #ff3355;
+    --blue:     #00aaff;
+    --dim:      #4a5568;
+    --text:     #c8d0dc;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Barlow Condensed', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, #0d1117 0%, #111820 100%);
+  }
+  .logo { font-size: 1.3rem; font-weight: 900; letter-spacing: 0.08em; color: var(--green); }
+  .logo span { color: var(--text); font-weight: 400; }
+  .clock { font-family: var(--mono); font-size: 0.85rem; color: var(--dim); }
+
+  /* ── API Reference Bar ── */
+  .api-bar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    padding: 10px 28px; background: #0d0f14; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 0.72rem;
+  }
+  .api-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 10px; color: var(--dim);
+  }
+  .method { font-weight: 700; }
+  .method.get  { color: var(--green); }
+  .method.post { color: var(--yellow); }
+
+  /* ── Grid ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1px; background: var(--border); }
+
+  /* ── Machine Card ── */
+  .card { background: var(--surface); padding: 20px 24px; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .machine-name { font-size: 1.5rem; font-weight: 900; letter-spacing: 0.05em; color: #fff; }
+  .machine-sub  { font-family: var(--mono); font-size: 0.7rem; color: var(--dim); margin-top: 2px; }
+
+  .badge {
+    font-family: var(--mono); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+    padding: 4px 10px; border-radius: 3px; text-transform: uppercase;
+  }
+  .badge.running { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+  .badge.warning { background: rgba(255,204,0,0.12);  color: var(--yellow); border: 1px solid rgba(255,204,0,0.25); }
+  .badge.fault   { background: rgba(255,51,85,0.15);  color: var(--red);    border: 1px solid rgba(255,51,85,0.3);
+                   animation: pulse 0.8s ease infinite alternate; }
+  .badge.waiting { background: rgba(74,85,104,0.15);  color: var(--dim);    border: 1px solid var(--border); }
+  @keyframes pulse { from { opacity: 1 } to { opacity: 0.4 } }
+
+  /* ── Metrics ── */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; }
+  .metric-label { font-size: 0.65rem; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; margin-bottom: 4px; }
+  .metric-value { font-family: var(--mono); font-size: 1.25rem; color: #fff; }
+  .metric-value.warn { color: var(--yellow); }
+  .metric-value.crit { color: var(--red); }
+  .metric-unit  { font-size: 0.65rem; color: var(--dim); margin-left: 2px; }
+
+  /* ── Sparkline ── */
+  .sparkline-wrap { margin-bottom: 14px; }
+  .spark-label { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; margin-bottom: 4px; }
+  svg.spark { width: 100%; height: 38px; display: block; }
+
+  /* ── Last reading ── */
+  .ts { font-family: var(--mono); font-size: 0.65rem; color: var(--dim); }
+
+  /* ── Alerts Panel ── */
+  .alerts-section { padding: 20px 28px; border-top: 1px solid var(--border); }
+  .section-title { font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; color: var(--text); text-transform: uppercase; margin-bottom: 14px; }
+  .alert-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+  .alert-item {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 12px; align-items: start;
+    background: rgba(255,51,85,0.07); border: 1px solid rgba(255,51,85,0.2);
+    border-radius: 4px; padding: 10px 14px; font-family: var(--mono); font-size: 0.72rem;
+  }
+  .alert-machine { color: var(--red); font-weight: 700; }
+  .alert-reason  { color: var(--text); }
+  .alert-time    { color: var(--dim); white-space: nowrap; }
+  .no-alerts { color: var(--dim); font-family: var(--mono); font-size: 0.8rem; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏭 HACK MALENDAU <span>2026 — Sensor Dashboard</span></div>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<div class="api-bar">
+  <div class="api-pill"><span class="method get">GET</span> /stream/{machine_id}</div>
+  <div class="api-pill"><span class="method get">GET</span> /history/{machine_id}</div>
+  <div class="api-pill"><span class="method post">POST</span> /alert</div>
+  <div class="api-pill"><span class="method post">POST</span> /schedule-maintenance</div>
+  <div class="api-pill"><span class="method get">GET</span> /alerts</div>
+  <div class="api-pill"><span class="method get">GET</span> /machines</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="alerts-section">
+  <div class="section-title">🚨 Raised Alerts</div>
+  <div class="alert-list" id="alert-list"><div class="no-alerts">No alerts raised yet. Your agent calls POST /alert to populate this list.</div></div>
+</div>
+
+<script>
+const MACHINES = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"];
+const HISTORY  = {};   // machineId → last N readings (for sparklines)
+const MAX_SPARK = 60;  // last 60 seconds of data for sparklines
+
+// ── Build cards ───────────────────────────────────────────────────────────────
+function buildCard(machineId) {
+  HISTORY[machineId] = [];
+  const card = document.createElement("div");
+  card.className = "card";
+  card.id = `card-${machineId}`;
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <div class="machine-name">${machineId}</div>
+        <div class="machine-sub">SSE → /stream/${machineId}</div>
+      </div>
+      <div class="badge waiting" id="badge-${machineId}">Connecting…</div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Temperature</div>
+        <div class="metric-value" id="temp-${machineId}">—<span class="metric-unit">°C</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Vibration</div>
+        <div class="metric-value" id="vib-${machineId}">—<span class="metric-unit">mm/s</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">RPM</div>
+        <div class="metric-value" id="rpm-${machineId}">—<span class="metric-unit">rpm</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Current</div>
+        <div class="metric-value" id="cur-${machineId}">—<span class="metric-unit">A</span></div>
+      </div>
+    </div>
+    <div class="sparkline-wrap">
+      <div class="spark-label">Vibration (last 60 s)</div>
+      <svg class="spark" id="spark-${machineId}" viewBox="0 0 200 38" preserveAspectRatio="none">
+        <polyline id="line-${machineId}" fill="none" stroke="#00ff88" stroke-width="1.5" points=""/>
+      </svg>
+    </div>
+    <div class="ts" id="ts-${machineId}">Waiting for first reading…</div>
+  `;
+  return card;
+}
+
+const grid = document.getElementById("grid");
+MACHINES.forEach(m => grid.appendChild(buildCard(m)));
+
+// ── Colour helpers ─────────────────────────────────────────────────────────
+function tempClass(v)    { return v > 100 ? "crit" : v > 85 ? "warn" : ""; }
+function vibClass(v)     { return v > 5   ? "crit" : v > 3   ? "warn" : ""; }
+function currentClass(v) { return v > 22  ? "crit" : v > 18  ? "warn" : ""; }
+
+// ── Sparkline renderer ─────────────────────────────────────────────────────
+function updateSparkline(machineId) {
+  const h = HISTORY[machineId];
+  if (h.length < 2) return;
+  const vals  = h.map(r => r.vibration_mm_s);
+  const min   = Math.min(...vals);
+  const max   = Math.max(...vals) || min + 1;
+  const W = 200, H = 38, PAD = 2;
+  const pts = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * W;
+    const y = H - PAD - ((v - min) / (max - min)) * (H - PAD * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const line = document.getElementById(`line-${machineId}`);
+  if (!line) return;
+
+  // Colour based on latest value
+  const latest = vals[vals.length - 1];
+  line.setAttribute("stroke", latest > 5 ? "#ff3355" : latest > 3 ? "#ffcc00" : "#00ff88");
+  line.setAttribute("points", pts);
+}
+
+// ── Update a single card with a new reading ────────────────────────────────
+function applyReading(r) {
+  const m = r.machine_id;
+  const hist = HISTORY[m];
+  hist.push(r);
+  if (hist.length > MAX_SPARK) hist.shift();
+
+  const badge = document.getElementById(`badge-${m}`);
+  if (badge) {
+    badge.className = `badge ${r.status}`;
+    badge.textContent = r.status.toUpperCase();
+  }
+
+  const setVal = (id, val, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const unit = el.querySelector(".metric-unit");
+    el.className = `metric-value${cls ? " " + cls : ""}`;
+    el.childNodes[0].textContent = val;
+    if (unit) el.appendChild(unit);
+  };
+
+  setVal(`temp-${m}`, r.temperature_C,  tempClass(r.temperature_C));
+  setVal(`vib-${m}`,  r.vibration_mm_s, vibClass(r.vibration_mm_s));
+  setVal(`rpm-${m}`,  r.rpm,            "");
+  setVal(`cur-${m}`,  r.current_A,      currentClass(r.current_A));
+
+  const ts = document.getElementById(`ts-${m}`);
+  if (ts) ts.textContent = r.timestamp;
+
+  updateSparkline(m);
+}
+
+// ── SSE connections ────────────────────────────────────────────────────────
+MACHINES.forEach(machineId => {
+  function connect() {
+    const es = new EventSource(`/stream/${machineId}`);
+    es.onmessage = e => { try { applyReading(JSON.parse(e.data)); } catch {} };
+    es.onerror   = () => { es.close(); setTimeout(connect, 3000); };
+  }
+  connect();
+});
+
+// ── Poll alerts ────────────────────────────────────────────────────────────
+async function pollAlerts() {
+  try {
+    const res  = await fetch("/alerts");
+    const data = await res.json();
+    const list = document.getElementById("alert-list");
+    if (data.count === 0) {
+      list.innerHTML = `<div class="no-alerts">No alerts raised yet. Your agent calls POST /alert to populate this list.</div>`;
+    } else {
+      list.innerHTML = [...data.alerts].reverse().map(a => `
+        <div class="alert-item">
+          <span class="alert-machine">${a.machine_id}</span>
+          <span class="alert-reason">${a.reason}</span>
+          <span class="alert-time">${new Date(a.triggered_at).toLocaleTimeString()}</span>
+        </div>
+      `).join("");
+    }
+  } catch {}
+}
+setInterval(pollAlerts, 2000);
+pollAlerts();
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+}, 1000);
+</script>
+</body>
+</html>
